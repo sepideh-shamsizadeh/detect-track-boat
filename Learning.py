@@ -1,6 +1,9 @@
-import os
-import cv2
 import numpy as np
+from os import path
+import os
+import glob
+import cv2
+from xml.dom import minidom
 import tensorflow as tf
 from keras.layers import Dense, Flatten, Activation, MaxPooling2D
 from keras.preprocessing.image import ImageDataGenerator
@@ -83,6 +86,59 @@ def get_data(data_dir, img_size, labels):
             except Exception as e:
                 print(e)
     return np.array(dataset)
+
+
+def read_image(dir_images, location_file):
+    num = 0
+    for fl in glob.glob(dir_images + '/*.png'):
+        img = cv2.imread(fl)
+        mta = minidom.parse(path.join(location_file, path.splitext(path.basename(fl))[0]+'.xml'))
+
+        for box in mta.getElementsByTagName('bndbox'):
+            num += 1
+            xmin = int(box.getElementsByTagName('xmin')[0].childNodes[0].data)
+            xmax = int(box.getElementsByTagName('xmax')[0].childNodes[0].data)
+            ymin = int(box.getElementsByTagName('ymin')[0].childNodes[0].data)
+            ymax = int(box.getElementsByTagName('ymax')[0].childNodes[0].data)
+    return img, 1, [xmin, ymin, xmax, ymax]
+
+
+def draw_bounding_box(image, ymin, xmin, ymax, xmax, color=(255, 0, 0), thickness=5):
+    cv2.rectangle(image, (int(xmin), int(ymin)), (int(xmax), int(ymax)), color, thickness)
+
+
+def draw_bounding_boxes(image, boxes, color=[], thickness=5):
+    boxes_shape = boxes.shape
+    if not boxes_shape:
+        return
+    if len(boxes_shape) != 2 or boxes_shape[1] != 4:
+        raise ValueError('Input must be of size [N, 4]')
+    for i in range(boxes_shape[0]):
+        draw_bounding_box(image, boxes[i, 1], boxes[i, 0], boxes[i, 3],
+                                   boxes[i, 2], color[i], thickness)
+
+
+def draw_bounding_boxes_array(image, boxes, color=[], thickness=5):
+    draw_bounding_boxes(image, boxes, color, thickness)
+
+    return image
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 if __name__ == '__main__':
